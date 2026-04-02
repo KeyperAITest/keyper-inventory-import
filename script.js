@@ -13,11 +13,15 @@ const EXPECTED_HEADERS = [
 ];
 
 const EXPECTED_COL_COUNT = 8;
+const MIN_VIN_LENGTH = 7; // Accept short VINs (last 7–8 is common)
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("fileInput").addEventListener("change", handleFile);
 });
 
+// ==================================================
+// FILE INGESTION
+// ==================================================
 function handleFile(event) {
   const file = event.target.files[0];
 
@@ -27,6 +31,7 @@ function handleFile(event) {
     complete: (results) => {
       const rows = results.data;
 
+      // Validate StockNumber (only required field)
       if (!hasValidStockNumbers(rows)) {
         showStatus(
           "❌ StockNumber is required for import. One or more rows are missing it.",
@@ -35,12 +40,13 @@ function handleFile(event) {
         return;
       }
 
+      // Always normalize to prevent VIN loss
       if (isAlreadyValid(rows)) {
         showStatus(
           "✅ This file already matches the required import format.",
           "success"
         );
-        downloadCSV(rows);
+        formatAndDownload(rows);
       } else {
         formatAndDownload(rows);
       }
@@ -51,15 +57,15 @@ function handleFile(event) {
 // ==================================================
 // VALIDATION RULES
 // ==================================================
-
 function hasValidStockNumbers(rows) {
   // Skip header row if present
-  return rows.slice(1).every(row => row[0] && row[0].toString().trim() !== "");
+  return rows.slice(1).every(row =>
+    row[0] && row[0].toString().trim() !== ""
+  );
 }
 
 function isAlreadyValid(rows) {
   const headerRow = rows[0];
-
   if (!headerRow || headerRow.length < EXPECTED_COL_COUNT) return false;
 
   return (
@@ -72,16 +78,27 @@ function isAlreadyValid(rows) {
 }
 
 // ==================================================
+// VIN EXTRACTION (FULL OR PARTIAL)
+// ==================================================
+function extractVin(row) {
+  const candidate = row[row.length - 1];
+  if (!candidate) return "";
+
+  const vin = candidate.toString().trim();
+  return vin.length >= MIN_VIN_LENGTH ? vin : "";
+}
+
+// ==================================================
 // FORMAT + NORMALIZE FILE
 // ==================================================
-
 function formatAndDownload(rows) {
   const output = [];
 
-  // Add canonical headers
+  // Add canonical header row
   output.push(EXPECTED_HEADERS);
 
   rows.forEach((row, index) => {
+    // Skip existing header row
     if (index === 0 && row[0] === "StockNumber") return;
 
     const normalized = new Array(EXPECTED_COL_COUNT).fill("");
@@ -90,15 +107,15 @@ function formatAndDownload(rows) {
     normalized[1] = row[1] || ""; // Make
     normalized[2] = row[2] || ""; // Model
     normalized[3] = row[3] || ""; // Year
-
-    // VIN is assumed to be last populated value in loose files
-    normalized[7] = row[row.length - 1] || "";
+    normalized[4] = row[4] || ""; // ExtColor
+    normalized[6] = row[6] || ""; // IntColor
+    normalized[7] = extractVin(row); // VIN (>=7 chars)
 
     output.push(normalized);
   });
 
   showStatus(
-    "ℹ️ This file was formatted to match the required import structure.",
+    "ℹ️ File was normalized to the required import structure.",
     "info"
   );
 
@@ -108,7 +125,6 @@ function formatAndDownload(rows) {
 // ==================================================
 // STATUS UI
 // ==================================================
-
 function showStatus(message, type) {
   const area = document.getElementById("mappingArea");
   area.innerHTML = "";
@@ -136,7 +152,6 @@ function showStatus(message, type) {
 // ==================================================
 // CSV OUTPUT
 // ==================================================
-
 function downloadCSV(data) {
   const csv = Papa.unparse(data);
   const blob = new Blob([csv], { type: "text/csv" });
@@ -146,3 +161,4 @@ function downloadCSV(data) {
   link.download = "formatted_inventory.csv";
   link.click();
 }
+``
