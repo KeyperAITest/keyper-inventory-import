@@ -69,9 +69,12 @@ function readExcelFile(file) {
 // MAIN ROW PROCESSOR
 // ==================================================
 function processRows(rows) {
+  const dataRowCount = rows.length - 1; // minus header row
+
   if (!hasValidStockNumbers(rows)) {
     showStatus(
-      "❌ StockNumber is required for import. One or more rows are missing it.",
+      `❌ StockNumber is required for import. One or more rows are missing it.
+       (${dataRowCount} rows processed)`,
       "error"
     );
     return;
@@ -79,12 +82,14 @@ function processRows(rows) {
 
   if (isAlreadyValid(rows)) {
     showStatus(
-      "✅ This file already matches the required import format.",
+      `✅ This file already matches the required import format.
+       (${dataRowCount} rows processed)`,
       "success"
     );
   } else {
     showStatus(
-      "ℹ️ File was formatted to match the required import structure.",
+      `ℹ️ File was formatted to match the required import structure.
+       (${dataRowCount} rows processed)`,
       "info"
     );
   }
@@ -178,6 +183,7 @@ function showStatus(message, type) {
   notice.style.padding = "10px";
   notice.style.marginTop = "15px";
   notice.style.borderRadius = "4px";
+  notice.style.whiteSpace = "pre-wrap"; // allow line breaks
 
   if (type === "success") {
     notice.style.backgroundColor = "#e6f4ea";
