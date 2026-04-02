@@ -20,40 +20,76 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==================================================
-// FILE INGESTION
+// FILE INGESTION (CSV + EXCEL)
 // ==================================================
 function handleFile(event) {
   const file = event.target.files[0];
+  if (!file) return;
 
-  Papa.parse(file, {
-    header: false,
-    skipEmptyLines: true,
-    complete: (results) => {
-      const rows = results.data;
+  const extension = file.name.split(".").pop().toLowerCase();
 
-      if (!hasValidStockNumbers(rows)) {
-        showStatus(
-          "❌ StockNumber is required for import. One or more rows are missing it.",
-          "error"
-        );
-        return;
-      }
+  if (extension === "csv") {
+    Papa.parse(file, {
+      header: false,
+      skipEmptyLines: true,
+      complete: (results) => processRows(results.data)
+    });
+  } else if (extension === "xls" || extension === "xlsx") {
+    readExcelFile(file);
+  } else {
+    showStatus("❌ Unsupported file type.", "error");
+  }
+}
 
-      if (isAlreadyValid(rows)) {
-        showStatus(
-          "✅ This file already matches the required import format.",
-          "success"
-        );
-        formatAndDownload(rows); // still normalize to avoid drift
-      } else {
-        showStatus(
-          "ℹ️ File was formatted to match the required import structure.",
-          "info"
-        );
-        formatAndDownload(rows);
-      }
-    }
-  });
+// ==================================================
+// EXCEL READER
+// ==================================================
+function readExcelFile(file) {
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+
+    const rows = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      blankrows: false
+    });
+
+    processRows(rows);
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+// ==================================================
+// MAIN ROW PROCESSOR
+// ==================================================
+function processRows(rows) {
+  if (!hasValidStockNumbers(rows)) {
+    showStatus(
+      "❌ StockNumber is required for import. One or more rows are missing it.",
+      "error"
+    );
+    return;
+  }
+
+  if (isAlreadyValid(rows)) {
+    showStatus(
+      "✅ This file already matches the required import format.",
+      "success"
+    );
+  } else {
+    showStatus(
+      "ℹ️ File was formatted to match the required import structure.",
+      "info"
+    );
+  }
+
+  formatAndDownload(rows);
 }
 
 // ==================================================
@@ -70,7 +106,7 @@ function isAlreadyValid(rows) {
   if (!headerRow || headerRow.length < EXPECTED_COL_COUNT) return false;
 
   return EXPECTED_HEADERS.every((expected, idx) => {
-    if (expected === "") return true; // allow blank placeholder columns
+    if (expected === "") return true;
 
     const actual = (headerRow[idx] || "")
       .toString()
@@ -110,7 +146,6 @@ function formatAndDownload(rows) {
   ]);
 
   rows.forEach((row, index) => {
-    // Skip header row if present
     if (index === 0 && row[0]?.toString().toLowerCase().trim() === "stocknumber") {
       return;
     }
