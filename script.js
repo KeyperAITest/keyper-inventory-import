@@ -15,7 +15,7 @@ const OUTPUT_SCHEMA = [
 let sourceRows = [];
 let mappings = {};
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("fileInput").addEventListener("change", handleFile);
   document.getElementById("downloadBtn").addEventListener("click", generateCSV);
 });
@@ -29,13 +29,13 @@ function handleFile(event) {
   Papa.parse(file, {
     header: false,
     skipEmptyLines: true,
-    complete: (results) => {
+    complete: function (results) {
       sourceRows = results.data;
 
-      // Generate Column 1, Column 2, etc.
-      const columnLabels = sourceRows[0].map(
-        (_, idx) => `Column ${idx + 1}`
-      );
+      // Build generic column labels based on column count
+      const columnLabels = sourceRows[0].map(function (_, idx) {
+        return "Column " + (idx + 1);
+      });
 
       buildMappingUI(columnLabels);
     }
@@ -50,28 +50,28 @@ function buildMappingUI(columnLabels) {
   container.innerHTML = "<h2>Map Your Columns</h2>";
   mappings = {};
 
-  OUTPUT_SCHEMA.forEach(field => {
+  OUTPUT_SCHEMA.forEach(function (field) {
 
-    // Locked system blank columns
+    // Locked system-required blank columns
     if (field.type === "blank") {
       container.innerHTML +=
-        `<p><strong>${field.key}</strong>: (system-required blank column)</p>`;
+        "<p><strong>" + field.key + "</strong>: (system-required blank column)</p>";
       return;
     }
 
     const select = document.createElement("select");
-    select.innerHTML = `<option value="">-- Select Column --</option>`;
+    select.innerHTML = '<option value="">-- Select Column --</option>';
 
-    columnLabels.forEach((label, idx) => {
-      const opt = document.createElement("option");
-      opt.value = idx;
-      opt.textContent = label;
-      select.appendChild(opt);
+    columnLabels.forEach(function (label, idx) {
+      const option = document.createElement("option");
+      option.value = idx;
+      option.textContent = label;
+      select.appendChild(option);
     });
 
-    select.onchange = e => {
+    select.addEventListener("change", function (e) {
       mappings[field.key] = parseInt(e.target.value, 10);
-    };
+    });
 
     container.appendChild(document.createTextNode(field.key + ": "));
     container.appendChild(select);
@@ -86,23 +86,32 @@ function buildMappingUI(columnLabels) {
 // ==================================================
 function generateCSV() {
   const output = [];
+  const EXPECTED_COLS = OUTPUT_SCHEMA.length;
 
-  // Header row for readability
+  // Header row (for visibility; system can ignore if needed)
   output.push(
-    OUTPUT_SCHEMA.map(f => (f.type === "blank" ? "" : f.key))
+    OUTPUT_SCHEMA.map(function (f) {
+      return f.type === "blank" ? "" : f.key;
+    })
   );
 
-  sourceRows.forEach(row => {
+  sourceRows.forEach(function (row) {
+    // Pad row so missing commas don't collapse positions
+    const paddedRow = row.slice();
+    while (paddedRow.length < EXPECTED_COLS) {
+      paddedRow.push("");
+    }
+
     const outRow = [];
 
-    OUTPUT_SCHEMA.forEach(field => {
+    OUTPUT_SCHEMA.forEach(function (field) {
       if (field.type === "blank") {
         outRow.push("");
       } else {
-        const sourceIndex = mappings[field.key];
+        const srcIndex = mappings[field.key];
         outRow.push(
-          sourceIndex !== undefined && row[sourceIndex] !== undefined
-            ? row[sourceIndex]
+          srcIndex !== undefined && paddedRow[srcIndex] !== undefined
+            ? paddedRow[srcIndex]
             : ""
         );
       }
@@ -113,10 +122,9 @@ function generateCSV() {
 
   const csv = Papa.unparse(output);
   const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
+  const link = document.createElement("a");
 
-  a.href = URL.createObjectURL(blob);
-  a.download = "formatted_inventory.csv";
-  a.click();
+  link.href = URL.createObjectURL(blob);
+  link.download = "formatted_inventory.csv";
+  link.click();
 }
-``
