@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==================================================
-// FILE INGESTION
+// FILE INGESTION (CSV + EXCEL)
 // ==================================================
 function handleFile(event) {
   const file = event.target.files[0];
@@ -33,21 +33,30 @@ function handleFile(event) {
 
   if (ext === "csv") {
     Papa.parse(file, {
-      header:false,
-      skipEmptyLines:true,
+      header: false,
+      skipEmptyLines: true,
       complete: r => processRows(r.data)
     });
-  } else {
+  } else if (ext === "xls" || ext === "xlsx") {
     readExcelFile(file);
+  } else {
+    showStatus("❌ Unsupported file type.", "error");
   }
 }
 
 function readExcelFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
-    const wb = XLSX.read(new Uint8Array(e.target.result), {type:"array"});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    processRows(XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false}));
+    const workbook = XLSX.read(
+      new Uint8Array(e.target.result),
+      { type: "array" }
+    );
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      blankrows: false
+    });
+    processRows(rows);
   };
   reader.readAsArrayBuffer(file);
 }
@@ -59,17 +68,39 @@ function processRows(rows) {
   rawRows = rows;
   columnHeaders = buildHeaders(rows);
 
-  if (isAlreadyValid(rows)) {
-    showStatus(`✅ File already valid (${rows.length-1} rows)`, "success");
-    formatCanonical(rows);
-  } else {
-    showStatus("ℹ️ Column mapping required", "info");
-    showMappingUI();
+  const rowCount = rows.length - 1;
+
+  if (!hasValidStockNumbers(rows)) {
+    showStatus(
+      `❌ StockNumber is required for import.
+(${rowCount} rows processed)`,
+      "error"
+    );
+    return;
   }
+
+  // ✅ Already canonical → still FORCE CSV generation
+  if (isAlreadyValid(rows)) {
+    showStatus(
+      `✅ This file already matches the required import format.
+(${rowCount} rows processed)`,
+      "success"
+    );
+    formatCanonical(rows);
+    return;
+  }
+
+  // ❌ Not canonical → show mapping UI
+  showStatus(
+    `ℹ️ Column mapping required.
+(${rowCount} rows detected)`,
+    "info"
+  );
+  showMappingUI();
 }
 
 // ==================================================
-// MAPPING UI
+// COLUMN MAPPING UI
 // ==================================================
 function showMappingUI() {
   const ui = document.getElementById("mappingUI");
@@ -93,14 +124,15 @@ function showMappingUI() {
     const select = document.createElement("select");
     select.innerHTML = `<option value="">-- Select Column --</option>`;
 
-    columnHeaders.forEach((h, i) => {
+    columnHeaders.forEach((header, i) => {
       const opt = document.createElement("option");
       opt.value = i;
-      opt.textContent = h;
+      opt.textContent = header;
       select.appendChild(opt);
     });
 
-    select.onchange = () => columnMapping[field] = select.value === "" ? null : parseInt(select.value);
+    select.onchange = () =>
+      columnMapping[field] = select.value === "" ? null : parseInt(select.value);
 
     row.appendChild(label);
     row.appendChild(select);
@@ -109,21 +141,23 @@ function showMappingUI() {
 }
 
 // ==================================================
-// GENERATE FROM MAPPING
+// GENERATE CSV FROM MAPPING
 // ==================================================
 function generateFromMapping() {
   if (columnMapping.StockNumber === null) {
-    alert("StockNumber is required.");
+    alert("StockNumber mapping is required.");
     return;
   }
 
   const output = [];
-  output.push(["StockNumber","Make","Model","Year","ExtColor","","IntColor","VIN"]);
+  output.push([
+    "StockNumber","Make","Model","Year","ExtColor","","IntColor","VIN"
+  ]);
 
   rawRows.slice(1).forEach(row => {
     const out = new Array(8).fill("");
 
-    out[0] = row[columnMapping.StockNumber] || "";
+    out[0] = getMapped(row,"StockNumber");
     out[1] = getMapped(row,"Make");
     out[2] = getMapped(row,"Model");
     out[3] = getMapped(row,"Year");
@@ -134,51 +168,105 @@ function generateFromMapping() {
     output.push(out);
   });
 
-  showStatus(`✅ Formatted via column mapping (${output.length-1} rows)`, "success");
+  showStatus(
+    `✅ Formatted via column mapping.
+(${output.length - 1} rows processed)`,
+    "success"
+  );
+
   downloadCSV(output);
 }
 
 function getMapped(row, field) {
   const idx = columnMapping[field];
-  return idx !== null ? row[idx] : "";
+  return idx !== null && row[idx] !== undefined ? row[idx] : "";
 }
 
 // ==================================================
-// HELPERS
+// CANONICAL FORMAT (ALREADY VALID FILES)
 // ==================================================
-function buildHeaders(rows) {
-  return rows[0].map((h,i) =>
-    h && h.toString().trim() !== "" ? h : `Column ${i+1}`
+function formatCanonical(rows) {
+  const output = [];
+
+  output.push([
+    "StockNumber","Make","Model","Year","ExtColor","","IntColor","VIN"
+  ]);
+
+  rows.forEach((row, index) => {
+    if (
+      index === 0 &&
+      row[0]?.toString().toLowerCase().trim() === "stocknumber"
+    ) {
+      return;
+    }
+
+    const out = new Array(8).fill("");
+
+    out[0] = row[0] || "";
+    out[1] = row[1] || "";
+    out[2] = row[2] || "";
+    out[3] = row[3] || "";
+    out[4] = row[4] || "";
+    out[6] = row[6] || "";
+    out[7] = extractVin(row[row.length - 1]);
+
+    output.push(out);
+  });
+
+  downloadCSV(output);
+}
+
+// ==================================================
+// VALIDATION HELPERS
+// ==================================================
+function hasValidStockNumbers(rows) {
+  return rows.slice(1).every(
+    row => row[0] && row[0].toString().trim() !== ""
   );
-}
-
-function extractVin(val) {
-  if (!val) return "";
-  const v = val.toString().trim();
-  return v.length >= MIN_VIN_LENGTH ? v : "";
 }
 
 function isAlreadyValid(rows) {
   const h = rows[0];
-  return EXPECTED_HEADERS.every((e,i)=>{
-    if (e==="") return true;
-    return (h[i]||"").toString().trim().toLowerCase()===e;
+  if (!h || h.length < EXPECTED_COL_COUNT) return false;
+
+  return EXPECTED_HEADERS.every((exp, i) => {
+    if (exp === "") return true;
+    return (h[i] || "")
+      .toString()
+      .trim()
+      .toLowerCase() === exp;
   });
 }
 
-// ==================================================
-// STATUS + CSV
-// ==================================================
-function showStatus(msg,type){
-  const area=document.getElementById("mappingArea");
-  area.innerHTML=`<p class="${type}">${msg}</p>`;
+function buildHeaders(rows) {
+  return rows[0].map((h, i) =>
+    h && h.toString().trim() !== "" ? h : `Column ${i + 1}`
+  );
 }
 
-function downloadCSV(data){
-  const csv=Papa.unparse(data);
-  const b=new Blob([csv],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(b);
-  a.download="formatted_inventory.csv";
-  a.click();
+// ==================================================
+// VIN HANDLING
+// ==================================================
+function extractVin(val) {
+  if (!val) return "";
+  const vin = val.toString().trim();
+  return vin.length >= MIN_VIN_LENGTH ? vin : "";
+}
+
+// ==================================================
+// STATUS + CSV OUTPUT
+// ==================================================
+function showStatus(message, type) {
+  const area = document.getElementById("mappingArea");
+  area.innerHTML = `<p class="${type}">${message}</p>`;
+}
+
+function downloadCSV(data) {
+  const csv = Papa.unparse(data);
+  const blob = new Blob([csv], { type: "text/csv" });
+  const link = document.createElement("a");
+
+  link.href = URL.createObjectURL(blob);
+  link.download = "formatted_inventory.csv";
+  link.click();
 }
