@@ -5,7 +5,7 @@
 
   <title>Inventory Import File Formatter</title>
 
-  <!-- ✅ Keyper Favicon / Branding -->
+  <!-- ✅ Keyper Branding / Favicons -->
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
@@ -16,49 +16,77 @@
 </head>
 <body>
 
-  <h1>Inventory Import File Formatter</h1>
-
-  <p>
-    Upload your inventory file (CSV or Excel). This tool verifies, normalizes,
-    and formats your data into the required import structure.
-  </p>
-
-  <input type="file" id="fileInput" accept=".csv,.xls,.xlsx">
-
-  <p style="margin-top: 10px; font-size: 14px;">
-    Only <strong>StockNumber</strong> is required. Other fields are optional.
-    Partial VINs (7+ characters) are supported.
-  </p>
-
-  <div style="
-    margin-top: 15px;
-    padding: 10px;
-    background-color: #f6f8fa;
-    border: 1px solid #d0d7de;
-    border-radius: 4px;
-    font-size: 13px;
+  <!-- ✅ Keyper Header -->
+  <header style="
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    border-bottom: 1px solid #e1e4e8;
+    background-color: #ffffff;
   ">
-    <strong>Expected Import Format:</strong>
-    <pre style="margin-top: 8px; white-space: pre-wrap;">
+    <img
+      src="KeyperLogo.webp"
+      alt="Keyper Systems"
+      style="height: 40px; width: auto;"
+    >
+
+    <div>
+      <div style="font-size: 18px; font-weight: 600;">
+        Inventory Import File Formatter
+      </div>
+      <div style="font-size: 12px; color: #6a737d;">
+        Key Management &amp; Asset Control Solutions
+      </div>
+    </div>
+  </header>
+
+  <!-- ✅ Main Content -->
+  <main style="padding: 20px;">
+
+    <p>
+      Upload your inventory file (CSV or Excel). This tool verifies, normalizes,
+      and formats your data into the required import structure.
+    </p>
+
+    <input type="file" id="fileInput" accept=".csv,.xls,.xlsx">
+
+    <p style="margin-top: 10px; font-size: 14px;">
+      Only <strong>StockNumber</strong> is required. Other fields are optional.
+      Partial VINs (7+ characters) are supported.
+    </p>
+
+    <div style="
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #f6f8fa;
+      border: 1px solid #d0d7de;
+      border-radius: 4px;
+      font-size: 13px;
+    ">
+      <strong>Expected Import Format:</strong>
+      <pre style="margin-top: 8px; white-space: pre-wrap;">
 StockNumber,Make,Model,Year,ExtColor,,IntColor,VIN
 A12345,Ford,F-150,2022,Black,,,"1FTFW1E82NFA12345"
-    </pre>
-  </div>
+      </pre>
+    </div>
 
-  <!-- ✅ Status / Messages -->
-  <div id="mappingArea"></div>
+    <!-- ✅ Status / Messages -->
+    <div id="mappingArea"></div>
 
-  <!-- ✅ Column Mapping UI (hidden unless needed) -->
-  <div id="mappingUI" style="display:none; margin-top:20px;">
-    <h3>Map Your Columns</h3>
-    <p>Select which column from your file maps to each required field.</p>
+    <!-- ✅ Column Mapping UI (hidden unless needed) -->
+    <div id="mappingUI" style="display:none; margin-top:20px;">
+      <h3>Map Your Columns</h3>
+      <p>Select which column from your file maps to each required field.</p>
 
-    <div id="mappingTable"></div>
+      <div id="mappingTable"></div>
 
-    <button id="generateFromMappingBtn">
-      Generate Formatted CSV
-    </button>
-  </div>
+      <button id="generateFromMappingBtn">
+        Generate Formatted CSV
+      </button>
+    </div>
+
+  </main>
 
   <!-- ✅ PapaParse (CSV Parsing) -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
