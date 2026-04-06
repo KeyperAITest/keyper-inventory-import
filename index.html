@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+
   <title>Inventory Import File Formatter</title>
 
+  <!-- ✅ Keyper Favicon / Branding -->
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <!-- ✅ Styles -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,18 +30,25 @@
     Partial VINs (7+ characters) are supported.
   </p>
 
-  <div style="margin-top: 15px; padding: 10px; background:#f6f8fa; border:1px solid #d0d7de;">
+  <div style="
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 4px;
+    font-size: 13px;
+  ">
     <strong>Expected Import Format:</strong>
-    <pre>
+    <pre style="margin-top: 8px; white-space: pre-wrap;">
 StockNumber,Make,Model,Year,ExtColor,,IntColor,VIN
 A12345,Ford,F-150,2022,Black,,,"1FTFW1E82NFA12345"
     </pre>
   </div>
 
-  <!-- Status / Messages -->
+  <!-- ✅ Status / Messages -->
   <div id="mappingArea"></div>
 
-  <!-- Column Mapping UI -->
+  <!-- ✅ Column Mapping UI (hidden unless needed) -->
   <div id="mappingUI" style="display:none; margin-top:20px;">
     <h3>Map Your Columns</h3>
     <p>Select which column from your file maps to each required field.</p>
@@ -45,13 +60,13 @@ A12345,Ford,F-150,2022,Black,,,"1FTFW1E82NFA12345"
     </button>
   </div>
 
-  <!-- PapaParse -->
+  <!-- ✅ PapaParse (CSV Parsing) -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
-  <!-- SheetJS -->
+  <!-- ✅ SheetJS (Excel Parsing) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-  <!-- Logic -->
+  <!-- ✅ App Logic -->
   <script src="script.js"></script>
 
 </body>
